@@ -4,16 +4,50 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local lp = game.Players.LocalPlayer
 local RS = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local Camera = workspace.CurrentCamera
 
-local walkEnabled = false
-local walkSpeedValue = 32
+local correctedSpeed = 45
+local normalFOV = Camera.FieldOfView
+local originalEffects = {}
 local movementConnection = nil
-local wsReconnect = nil
+
+-- Función para guardar efectos visuales
+local function saveOriginalEffects()
+	originalEffects = {}
+	for _, effect in pairs(Lighting:GetChildren()) do
+		if effect:IsA("ColorCorrectionEffect") or effect:IsA("BlurEffect") then
+			table.insert(originalEffects, effect:Clone())
+		end
+	end
+end
+
+-- Restaurar efectos originales
+local function restoreOriginalEffects()
+	for _, effect in pairs(Lighting:GetChildren()) do
+		if effect:IsA("ColorCorrectionEffect") or effect:IsA("BlurEffect") then
+			effect:Destroy()
+		end
+	end
+	for _, original in ipairs(originalEffects) do
+		original.Parent = Lighting
+	end
+end
+
+-- Obtener dirección de movimiento de la cámara
+local function getCameraInputDirection()
+	local dir = Vector3.zero
+	if UIS:IsKeyDown(Enum.KeyCode.W) then dir += Camera.CFrame.LookVector end
+	if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
+	if UIS:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
+	if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
+	return Vector3.new(dir.X, 0, dir.Z).Unit
+end
 
 -- Crear ventana Rayfield
 local Window = Rayfield:CreateWindow({
-	Name = "WalkSpeed Hub",
-	LoadingTitle = "Cargando WalkSpeed...",
+	Name = "Protecciones",
+	LoadingTitle = "Cargando Protecciones...",
 	LoadingSubtitle = "by waza",
 	ConfigurationSaving = {
 		Enabled = false
@@ -24,80 +58,80 @@ local Window = Rayfield:CreateWindow({
 	KeySystem = false
 })
 
--- Tab de movimiento
-local Tab_Movimiento = Window:CreateTab("Movimiento", 4483362458)
+-- Tab de protección
+local Tab_Proteccion = Window:CreateTab("Protección", 4483362458)
 
--- Slider de velocidad
-Tab_Movimiento:CreateSlider({
-	Name = "Velocidad WalkSpeed",
-	Range = {16, 120},
-	Increment = 1,
-	Suffix = "Vel",
-	CurrentValue = 32,
-	Flag = "WalkSpeedSlider",
-	Callback = function(Value)
-		walkSpeedValue = Value
-	end,
-})
-
--- Toggle de WalkSpeed
-Tab_Movimiento:CreateToggle({
-	Name = "WalkSpeed",
-	Flag = "WalkSpeedToggle",
+-- Toggle Anti Bee Launcher
+Tab_Proteccion:CreateToggle({
+	Name = "Anti Bee Launcher",
 	CurrentValue = false,
 	Callback = function(enabled)
-		walkEnabled = enabled
-
 		if movementConnection then
 			movementConnection:Disconnect()
 			movementConnection = nil
 		end
-		if wsReconnect then
-			wsReconnect:Disconnect()
-			wsReconnect = nil
-		end
 
 		if enabled then
-			local function applyWalkspeed()
-				local isMobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
+			saveOriginalEffects()
 
-				movementConnection = RS.RenderStepped:Connect(function()
-					local char = lp.Character
-					local cam = workspace.CurrentCamera
-					if not char or not cam then return end
+			Rayfield:Notify({
+				Title = "Protección Activada",
+				Content = "El Anti Bee Launcher ha sido desactivado correctamente.",
+				Duration = 4
+			})
 
-					local hrp = char:FindFirstChild("HumanoidRootPart")
-					local hum = char:FindFirstChildOfClass("Humanoid")
-					if not hrp or not hum then return end
+			movementConnection = RS.RenderStepped:Connect(function()
+				local char = lp.Character
+				if not char then return end
 
-					hum.PlatformStand = false
-					hum:ChangeState(Enum.HumanoidStateType.Running)
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				local cam = workspace.CurrentCamera
+				if not hrp or not hum or not cam then return end
 
-					local moveVec = Vector3.zero
-
-					if isMobile then
-						moveVec = hum.MoveDirection
-					else
-						if UIS:IsKeyDown(Enum.KeyCode.W) then moveVec += cam.CFrame.LookVector end
-						if UIS:IsKeyDown(Enum.KeyCode.S) then moveVec -= cam.CFrame.LookVector end
-						if UIS:IsKeyDown(Enum.KeyCode.D) then moveVec += cam.CFrame.RightVector end
-						if UIS:IsKeyDown(Enum.KeyCode.A) then moveVec -= cam.CFrame.RightVector end
+				-- Remover efectos visuales
+				for _, v in pairs(Lighting:GetChildren()) do
+					if v:IsA("ColorCorrectionEffect") or v:IsA("BlurEffect") then
+						v:Destroy()
 					end
+				end
 
-					local dir = moveVec.Magnitude > 0 and Vector3.new(moveVec.X, 0, moveVec.Z).Unit or Vector3.zero
-					local velY = math.clamp(hrp.AssemblyLinearVelocity.Y, -50, 50)
-					hrp.AssemblyLinearVelocity = dir * walkSpeedValue + Vector3.new(0, velY, 0)
-				end)
-			end
+				-- Restaurar FOV
+				if cam.FieldOfView ~= normalFOV then
+					cam.FieldOfView = normalFOV
+				end
 
-			applyWalkspeed()
+				-- Corregir velocidad
+				local inputDir = getCameraInputDirection()
+				local vel = hrp.AssemblyLinearVelocity
 
-			wsReconnect = lp.CharacterAdded:Connect(function()
-				if walkEnabled then
-					task.wait(0.5)
-					applyWalkspeed()
+				if inputDir ~= Vector3.zero then
+					local dot = vel.Magnitude > 0 and vel.Unit:Dot(inputDir) or 1
+
+					if dot < -0.3 then
+						hum:Move(Vector3.zero, true)
+						hrp.AssemblyLinearVelocity = inputDir * correctedSpeed
+					else
+						hrp.AssemblyLinearVelocity = inputDir * correctedSpeed
+					end
+				else
+					hrp.AssemblyLinearVelocity = Vector3.new(0, vel.Y, 0)
 				end
 			end)
+		else
+			if movementConnection then
+				movementConnection:Disconnect()
+				movementConnection = nil
+			end
+
+			restoreOriginalEffects()
+			if Camera then Camera.FieldOfView = normalFOV end
+
+			Rayfield:Notify({
+				Title = "Protección Desactivada",
+				Content = "Pantalla restaurada correctamente.",
+				Duration = 3
+			})
 		end
 	end
 })
