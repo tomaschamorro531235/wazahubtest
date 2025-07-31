@@ -1,137 +1,137 @@
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
--- Servicios y variables
-local lp = game.Players.LocalPlayer
-local RS = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
-local Lighting = game:GetService("Lighting")
-local Camera = workspace.CurrentCamera
-
-local correctedSpeed = 45
-local normalFOV = Camera.FieldOfView
-local originalEffects = {}
-local movementConnection = nil
-
--- Función para guardar efectos visuales
-local function saveOriginalEffects()
-	originalEffects = {}
-	for _, effect in pairs(Lighting:GetChildren()) do
-		if effect:IsA("ColorCorrectionEffect") or effect:IsA("BlurEffect") then
-			table.insert(originalEffects, effect:Clone())
-		end
-	end
-end
-
--- Restaurar efectos originales
-local function restoreOriginalEffects()
-	for _, effect in pairs(Lighting:GetChildren()) do
-		if effect:IsA("ColorCorrectionEffect") or effect:IsA("BlurEffect") then
-			effect:Destroy()
-		end
-	end
-	for _, original in ipairs(originalEffects) do
-		original.Parent = Lighting
-	end
-end
-
--- Obtener dirección de movimiento de la cámara
-local function getCameraInputDirection()
-	local dir = Vector3.zero
-	if UIS:IsKeyDown(Enum.KeyCode.W) then dir += Camera.CFrame.LookVector end
-	if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
-	if UIS:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
-	if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
-	return Vector3.new(dir.X, 0, dir.Z).Unit
-end
-
--- Crear ventana Rayfield
 local Window = Rayfield:CreateWindow({
-	Name = "Protecciones",
-	LoadingTitle = "Cargando Protecciones...",
-	LoadingSubtitle = "by waza",
+	Name = "🧠 Waza Hub | Brainrot ESP",
+	LoadingTitle = "Cargando...",
+	LoadingSubtitle = "Detectando brainrots...",
 	ConfigurationSaving = {
-		Enabled = false
-	},
-	Discord = {
-		Enabled = false
+		Enabled = true,
+		FolderName = "WazaBrainrotESP",
+		FileName = "BrainrotSettings"
 	},
 	KeySystem = false
 })
 
--- Tab de protección
-local Tab_Proteccion = Window:CreateTab("Protección", 4483362458)
+local Tab_ESP = Window:CreateTab("🧠 Brainrot ESP", 4483362458)
 
--- Toggle Anti Bee Launcher
-Tab_Proteccion:CreateToggle({
-	Name = "Anti Bee Launcher",
+local brainrotESPEnabled = false
+local brainrotESPConnection = nil
+local brainrotESPInstances = {}
+
+local brainrotRarities = {
+	-- Common (verde)
+	["Noobini Pizzanini"] = "Common", ["Lirilì Larilà"] = "Common", ["Tim Cheese"] = "Common",
+	["Fluriflura"] = "Common", ["Talpa Di Fero"] = "Common", ["Svinina Bombardino"] = "Common",
+	["Pipi Kiwi"] = "Common",
+
+	-- Rare (azul)
+	["Trippi Troppi"] = "Rare", ["Tung Tung Tung Sahur"] = "Rare", ["Gangster Footera"] = "Rare",
+	["Bandito Bobritto"] = "Rare", ["Boneca Ambalabu"] = "Rare", ["Cacto Hipopotamo"] = "Rare",
+	["Ta Ta Ta Ta Sahur"] = "Rare", ["Tric Trac Baraboom"] = "Rare",
+
+	-- Epic (morado)
+	["Cappuccino Assassino"] = "Epic", ["Brr Brr Patapim"] = "Epic", ["Trulimero Trulicina"] = "Epic",
+	["Bambini Crostini"] = "Epic", ["Bananita Dolphinita"] = "Epic", ["Perochello Lemonchello"] = "Epic",
+	["Brri Brri Bicus Dicus Bombicus"] = "Epic", ["Avocadini Guffo"] = "Epic", ["Salamini Penguini"] = "Epic",
+
+	-- Legendary (dorado)
+	["Burbaloni Loliloli"] = "Legendary", ["Chimpanzini Bananini"] = "Legendary",
+	["Ballerina Cappuccina"] = "Legendary", ["Chef Crabracadabra"] = "Legendary",
+	["Lionel Cactuseli"] = "Legendary", ["Glorbo Fruttodrillo"] = "Legendary",
+	["Blueberrinni Octopusini"] = "Legendary", ["Strawberelli Flamingelli"] = "Legendary",
+	["Pandaccini Bananini"] = "Legendary",
+
+	-- Mythic (rojo)
+	["Frigo Camelo"] = "Mythic", ["Orangutini Ananassini"] = "Mythic", ["Rhino Toasterino"] = "Mythic",
+	["Bombardiro Crocodilo"] = "Mythic", ["Bombombini Gusini"] = "Mythic", ["Cavallo Virtuoso"] = "Mythic",
+	["Gorilla Watermelondrillo"] = "Mythic", ["Spioniro Golubiro"] = "Mythic", ["Zibra Zubra Zibralini"] = "Mythic",
+	["Tigrilini Watermelini"] = "Mythic",
+
+	-- God (🌈 rainbow)
+	["Cocofanto Elefanto"] = "God", ["Girafa Celestre"] = "God", ["Gattatino Neonino"] = "God",
+	["Matteo"] = "God", ["Tralalero Tralala"] = "God", ["Los Crocodillitos"] = "God",
+	["Espresso Signora"] = "God", ["Odin Din Din Dun"] = "God", ["Statutino Libertino"] = "God",
+	["Trenostruzzo Turbo 3000"] = "God", ["Ballerino Lololo"] = "God", ["Piccione Macchina"] = "God",
+	["Tigroligre Frutonni"] = "God", ["Orcalero Orcala"] = "God",
+
+	-- Secret (negro)
+	["La Vacca Saturno Saturnita"] = "Secret", ["Chimpanzini Spiderini"] = "Secret",
+	["Los Tralaleritos"] = "Secret", ["Las Tralaleritas"] = "Secret", ["Las Vaquitas Saturnitas"] = "Secret",
+	["Graipuss Medussi"] = "Secret", ["Chicleteira Bicicleteira"] = "Secret",
+	["La Grande Combinasion"] = "Secret", ["Nuclearo Dinossauro"] = "Secret",
+	["Garama and Madundung"] = "Secret"
+}
+
+local rainbow = 0
+
+Tab_ESP:CreateToggle({
+	Name = "Nametag Brainrots (con colores)",
 	CurrentValue = false,
 	Callback = function(enabled)
-		if movementConnection then
-			movementConnection:Disconnect()
-			movementConnection = nil
+		brainrotESPEnabled = enabled
+
+		if not enabled then
+			if brainrotESPConnection then brainrotESPConnection:Disconnect() end
+			for _, gui in pairs(brainrotESPInstances) do
+				if gui and gui.Parent then gui:Destroy() end
+			end
+			brainrotESPInstances = {}
+			return
 		end
 
-		if enabled then
-			saveOriginalEffects()
+		brainrotESPConnection = game:GetService("RunService").RenderStepped:Connect(function()
+			rainbow += 0.01
+			if rainbow >= 1 then rainbow = 0 end
+			local rainbowColor = Color3.fromHSV(rainbow, 1, 1)
 
-			Rayfield:Notify({
-				Title = "Protección Activada",
-				Content = "El Anti Bee Launcher ha sido desactivado correctamente.",
-				Duration = 4
-			})
+			for _, model in ipairs(workspace:GetChildren()) do
+				if model:IsA("Model") and brainrotRarities[model.Name] and not brainrotESPInstances[model] then
+					local root = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+					if root then
+						local rarity = brainrotRarities[model.Name]
 
-			movementConnection = RS.RenderStepped:Connect(function()
-				local char = lp.Character
-				if not char then return end
+						local color = ({
+							Common = Color3.fromRGB(0, 255, 0),      -- Verde
+							Rare = Color3.fromRGB(0, 170, 255),       -- Azul
+							Epic = Color3.fromRGB(170, 85, 255),      -- Morado
+							Legendary = Color3.fromRGB(255, 215, 0),  -- Dorado
+							Mythic = Color3.fromRGB(255, 0, 0),       -- Rojo
+							Secret = Color3.fromRGB(0, 0, 0)          -- Negro
+						})[rarity] or Color3.fromRGB(255, 255, 255)
 
-				local hrp = char:FindFirstChild("HumanoidRootPart")
-				local hum = char:FindFirstChildOfClass("Humanoid")
-				local cam = workspace.CurrentCamera
-				if not hrp or not hum or not cam then return end
+						local gui = Instance.new("BillboardGui")
+						gui.Name = "BrainrotESP"
+						gui.Size = UDim2.new(0, 140, 0, 25)
+						gui.AlwaysOnTop = true
+						gui.Adornee = root
+						gui.StudsOffset = Vector3.new(0, 3.5, 0)
 
-				-- Remover efectos visuales
-				for _, v in pairs(Lighting:GetChildren()) do
-					if v:IsA("ColorCorrectionEffect") or v:IsA("BlurEffect") then
-						v:Destroy()
+						local label = Instance.new("TextLabel")
+						label.Size = UDim2.new(1, 0, 1, 0)
+						label.BackgroundTransparency = 1
+						label.Text = model.Name .. " [" .. rarity .. "]"
+						label.TextColor3 = (rarity == "God" and rainbowColor) or color
+						label.Font = Enum.Font.GothamBold
+						label.TextScaled = true
+						label.TextStrokeTransparency = 0.2
+						label.Parent = gui
+
+						gui.Parent = model
+						brainrotESPInstances[model] = label
 					end
 				end
-
-				-- Restaurar FOV
-				if cam.FieldOfView ~= normalFOV then
-					cam.FieldOfView = normalFOV
-				end
-
-				-- Corregir velocidad
-				local inputDir = getCameraInputDirection()
-				local vel = hrp.AssemblyLinearVelocity
-
-				if inputDir ~= Vector3.zero then
-					local dot = vel.Magnitude > 0 and vel.Unit:Dot(inputDir) or 1
-
-					if dot < -0.3 then
-						hum:Move(Vector3.zero, true)
-						hrp.AssemblyLinearVelocity = inputDir * correctedSpeed
-					else
-						hrp.AssemblyLinearVelocity = inputDir * correctedSpeed
-					end
-				else
-					hrp.AssemblyLinearVelocity = Vector3.new(0, vel.Y, 0)
-				end
-			end)
-		else
-			if movementConnection then
-				movementConnection:Disconnect()
-				movementConnection = nil
 			end
 
-			restoreOriginalEffects()
-			if Camera then Camera.FieldOfView = normalFOV end
-
-			Rayfield:Notify({
-				Title = "Protección Desactivada",
-				Content = "Pantalla restaurada correctamente.",
-				Duration = 3
-			})
-		end
+			-- Actualizar color rainbow para los god
+			for model, label in pairs(brainrotESPInstances) do
+				if brainrotRarities[model.Name] == "God" then
+					label.TextColor3 = Color3.fromHSV(rainbow, 1, 1)
+				end
+				if not model:IsDescendantOf(workspace) then
+					label.Parent:Destroy()
+					brainrotESPInstances[model] = nil
+				end
+			end
+		end)
 	end
 })
