@@ -1,3 +1,4 @@
+-- 🧠 Waza Hub | Brainrot ESP con filtros por rareza
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
@@ -17,44 +18,41 @@ local Tab_ESP = Window:CreateTab("🧠 Brainrot ESP", 4483362458)
 local brainrotESPEnabled = false
 local brainrotESPConnection = nil
 local brainrotESPInstances = {}
+local rainbow = 0
+
+local filterEnabled = {
+	Common = true,
+	Rare = true,
+	Epic = true,
+	Legendary = true,
+	Mythic = true,
+	God = true,
+	Secret = true
+}
 
 local brainrotRarities = {
-	-- Common (verde)
 	["Noobini Pizzanini"] = "Common", ["Lirilì Larilà"] = "Common", ["Tim Cheese"] = "Common",
-	["Fluriflura"] = "Common", ["Talpa Di Fero"] = "Common", ["Svinina Bombardino"] = "Common",
-	["Pipi Kiwi"] = "Common",
-
-	-- Rare (azul)
+	["Fluriflura"] = "Common", ["Talpa Di Fero"] = "Common", ["Svinina Bombardino"] = "Common", ["Pipi Kiwi"] = "Common",
 	["Trippi Troppi"] = "Rare", ["Tung Tung Tung Sahur"] = "Rare", ["Gangster Footera"] = "Rare",
 	["Bandito Bobritto"] = "Rare", ["Boneca Ambalabu"] = "Rare", ["Cacto Hipopotamo"] = "Rare",
 	["Ta Ta Ta Ta Sahur"] = "Rare", ["Tric Trac Baraboom"] = "Rare",
-
-	-- Epic (morado)
 	["Cappuccino Assassino"] = "Epic", ["Brr Brr Patapim"] = "Epic", ["Trulimero Trulicina"] = "Epic",
 	["Bambini Crostini"] = "Epic", ["Bananita Dolphinita"] = "Epic", ["Perochello Lemonchello"] = "Epic",
 	["Brri Brri Bicus Dicus Bombicus"] = "Epic", ["Avocadini Guffo"] = "Epic", ["Salamini Penguini"] = "Epic",
-
-	-- Legendary (dorado)
 	["Burbaloni Loliloli"] = "Legendary", ["Chimpanzini Bananini"] = "Legendary",
 	["Ballerina Cappuccina"] = "Legendary", ["Chef Crabracadabra"] = "Legendary",
 	["Lionel Cactuseli"] = "Legendary", ["Glorbo Fruttodrillo"] = "Legendary",
 	["Blueberrinni Octopusini"] = "Legendary", ["Strawberelli Flamingelli"] = "Legendary",
 	["Pandaccini Bananini"] = "Legendary",
-
-	-- Mythic (rojo)
 	["Frigo Camelo"] = "Mythic", ["Orangutini Ananassini"] = "Mythic", ["Rhino Toasterino"] = "Mythic",
 	["Bombardiro Crocodilo"] = "Mythic", ["Bombombini Gusini"] = "Mythic", ["Cavallo Virtuoso"] = "Mythic",
 	["Gorilla Watermelondrillo"] = "Mythic", ["Spioniro Golubiro"] = "Mythic", ["Zibra Zubra Zibralini"] = "Mythic",
 	["Tigrilini Watermelini"] = "Mythic",
-
-	-- God (🌈 rainbow)
 	["Cocofanto Elefanto"] = "God", ["Girafa Celestre"] = "God", ["Gattatino Neonino"] = "God",
 	["Matteo"] = "God", ["Tralalero Tralala"] = "God", ["Los Crocodillitos"] = "God",
 	["Espresso Signora"] = "God", ["Odin Din Din Dun"] = "God", ["Statutino Libertino"] = "God",
 	["Trenostruzzo Turbo 3000"] = "God", ["Ballerino Lololo"] = "God", ["Piccione Macchina"] = "God",
 	["Tigroligre Frutonni"] = "God", ["Orcalero Orcala"] = "God",
-
-	-- Secret (negro)
 	["La Vacca Saturno Saturnita"] = "Secret", ["Chimpanzini Spiderini"] = "Secret",
 	["Los Tralaleritos"] = "Secret", ["Las Tralaleritas"] = "Secret", ["Las Vaquitas Saturnitas"] = "Secret",
 	["Graipuss Medussi"] = "Secret", ["Chicleteira Bicicleteira"] = "Secret",
@@ -62,22 +60,26 @@ local brainrotRarities = {
 	["Garama and Madundung"] = "Secret"
 }
 
-local rainbow = 0
+Tab_ESP:CreateSection("Filtrar rarezas detectadas")
+for rarity, _ in pairs(filterEnabled) do
+	Tab_ESP:CreateToggle({
+		Name = "Detectar " .. rarity,
+		CurrentValue = filterEnabled[rarity],
+		Callback = function(val)
+			filterEnabled[rarity] = val
+		end
+	})
+end
 
 Tab_ESP:CreateToggle({
 	Name = "Nametag Brainrots (con colores)",
 	CurrentValue = false,
 	Callback = function(enabled)
 		brainrotESPEnabled = enabled
-
-		if not enabled then
-			if brainrotESPConnection then brainrotESPConnection:Disconnect() end
-			for _, gui in pairs(brainrotESPInstances) do
-				if gui and gui.Parent then gui:Destroy() end
-			end
-			brainrotESPInstances = {}
-			return
-		end
+		if brainrotESPConnection then brainrotESPConnection:Disconnect() end
+		for _, gui in pairs(brainrotESPInstances) do if gui and gui.Parent then gui:Destroy() end end
+		brainrotESPInstances = {}
+		if not enabled then return end
 
 		brainrotESPConnection = game:GetService("RunService").RenderStepped:Connect(function()
 			rainbow += 0.01
@@ -85,18 +87,18 @@ Tab_ESP:CreateToggle({
 			local rainbowColor = Color3.fromHSV(rainbow, 1, 1)
 
 			for _, model in ipairs(workspace:GetChildren()) do
-				if model:IsA("Model") and brainrotRarities[model.Name] and not brainrotESPInstances[model] then
+				local name = model.Name
+				local rarity = brainrotRarities[name]
+				if model:IsA("Model") and rarity and filterEnabled[rarity] and not brainrotESPInstances[model] then
 					local root = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
 					if root then
-						local rarity = brainrotRarities[model.Name]
-
 						local color = ({
-							Common = Color3.fromRGB(0, 255, 0),      -- Verde
-							Rare = Color3.fromRGB(0, 170, 255),       -- Azul
-							Epic = Color3.fromRGB(170, 85, 255),      -- Morado
-							Legendary = Color3.fromRGB(255, 215, 0),  -- Dorado
-							Mythic = Color3.fromRGB(255, 0, 0),       -- Rojo
-							Secret = Color3.fromRGB(0, 0, 0)          -- Negro
+							Common = Color3.fromRGB(0, 255, 0),
+							Rare = Color3.fromRGB(0, 170, 255),
+							Epic = Color3.fromRGB(170, 85, 255),
+							Legendary = Color3.fromRGB(255, 215, 0),
+							Mythic = Color3.fromRGB(255, 0, 0),
+							Secret = Color3.fromRGB(0, 0, 0)
 						})[rarity] or Color3.fromRGB(255, 255, 255)
 
 						local gui = Instance.new("BillboardGui")
@@ -109,7 +111,7 @@ Tab_ESP:CreateToggle({
 						local label = Instance.new("TextLabel")
 						label.Size = UDim2.new(1, 0, 1, 0)
 						label.BackgroundTransparency = 1
-						label.Text = model.Name .. " [" .. rarity .. "]"
+						label.Text = name .. " [" .. rarity .. "]"
 						label.TextColor3 = (rarity == "God" and rainbowColor) or color
 						label.Font = Enum.Font.GothamBold
 						label.TextScaled = true
@@ -122,7 +124,6 @@ Tab_ESP:CreateToggle({
 				end
 			end
 
-			-- Actualizar color rainbow para los god
 			for model, label in pairs(brainrotESPInstances) do
 				if brainrotRarities[model.Name] == "God" then
 					label.TextColor3 = Color3.fromHSV(rainbow, 1, 1)
